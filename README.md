@@ -1,5 +1,5 @@
 # PBL
- A simple compiled language for the PBPU3
+ PBLang A simple compiled language for the PBPU3
 
 # Syntax
 ## Variables

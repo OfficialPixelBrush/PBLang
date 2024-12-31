@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess
 
 filename = 'example.pbl'
-printTokens = False
+printTokens = True
 byteNumber = False
 writeCommentToggle = True
 endOfLineSpacing = True
@@ -55,6 +55,12 @@ def getCurrentToken(tkn = ""):
 
     if (tkn == "#"):
         return ("COMMENT",turnAllAfterIntoString())
+
+    if (tkn == "carry"):
+        return ("CARRY","")
+    
+    if (tkn == "!carry"):
+        return ("NOCARRY","")
 
     elif (tkn == "="):
         return ("EQUALS",tkn)
@@ -228,15 +234,27 @@ with open(asmFilename, 'w') as file:
         elif (tknType == "GOTO"):
             # Conditional
             if (getToken(tokenIndex+1)[0] == "IF"):
-                var = getToken(tokenIndex+2)[1]
-                if (getToken(tokenIndex+3)[0] == "COMPNOTEQUAL"):
-                    writeComment(file,f"GOTO IF {var}!={getToken(tokenIndex+4)[1]}")
-                    writeInstruction(file,f"ld {var}")
-                    writeInstruction(file,f"xnor {var}")
-                    writeInstruction(file,f"jpz {tknContent}")
-                elif (getToken(tokenIndex+3)[0] == "COMPEQUAL"):
-                    writeComment(file,f"GOTO IF {var}=={getToken(tokenIndex+4)[1]}")
-                    writeInstruction(file,f"ld {var}")
+                if (getToken(tokenIndex+2)[0] == "CARRY"):
+                    writeComment(file,f"GOTO IF CARRY")
+                    writeInstruction(file,f"jpc {tknContent}")
+                elif (getToken(tokenIndex+2)[0] == "NOCARRY"):
+                    writeComment(file,f"GOTO IF !CARRY")
+                    writeInstruction(file,f"xnor tmp")
+                    writeInstruction(file,f"jpc {tknContent}")
+                else:
+                    var = getToken(tokenIndex+2)[1]
+                    operator = getToken(tokenIndex+3)[0]
+                    if (operator == "COMPNOTEQUAL"):
+                        writeComment(file,f"GOTO IF {var}!={getToken(tokenIndex+4)[1]}")
+                        writeInstruction(file,f"ld {var}")
+                        writeInstruction(file,f"xnor 31")
+                        writeInstruction(file,f"st tmp")
+                        writeInstruction(file,f"ld {var}")
+                        writeInstruction(file,f"xnor tmp")
+                        writeInstruction(file,f"jpz {tknContent}")
+                    elif (operator == "COMPEQUAL"):
+                        writeComment(file,f"GOTO IF {var}=={getToken(tokenIndex+4)[1]}")
+                        writeInstruction(file,f"ld {var}")
                     writeInstruction(file,f"jpz {tknContent}")
             else:
                 # Unconditional

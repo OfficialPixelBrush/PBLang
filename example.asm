@@ -5,8 +5,8 @@ start:
 ldi 0
 st x
 
-; y = -1
-ldi -1
+; y = 1
+ldi 1
 st y
 
 loop:
@@ -18,10 +18,9 @@ ld x
 add tmp
 st x
 
-; GOTO IF x!=0
-ld x
-xnor x
-jpz loop
+; GOTO IF !CARRY
+xnor tmp
+jpc loop
 
 ; HALT
 hlt

@@ -5,12 +5,13 @@ import subprocess
 filename = 'example.pbl'
 printTokens = False
 byteNumber = False
-writeSourceCode = True
+writeCommentToggle = True
 endOfLineSpacing = True
 
 programLine = 0
 tokenIndex = 0
 prg = []
+binarySize = 0
 tokenizedList = []
 
 def getString():
@@ -24,12 +25,14 @@ def getString():
         tokenIndex += 1
     return string.strip()
 
+# Read anything contained within a round bracket
 def readBracket(currentToken):
     check = re.search(r"\([^)]*\)", currentToken)
     if (check):
         return check.group(0)[1:-1]
     raise ValueError('No token found inside bracket')
 
+# Interpret all following tokens as part of a string
 def turnAllAfterIntoString():
     global programLine
     global tokenIndex
@@ -40,7 +43,7 @@ def turnAllAfterIntoString():
         tokenIndex += 1
     return string.strip()
 
-
+# Get the current token
 def getCurrentToken(tkn = ""):
     global programLine
     global tokenIndex
@@ -77,18 +80,8 @@ def getCurrentToken(tkn = ""):
 
     elif (re.match(r"-?[0-9]", tkn)):
         return ("INTEGER",tkn)
-def push():
-    global tokenIndex
-    stack.append(tokenIndex)
 
-def pop():
-    if (len(stack)-1 > 0):
-        tokenIndex = stack[-1]
-        del stack[-1]
-        return 0
-    else:
-        return 1
-
+# Skip all following tokens until a matching one is found
 def continueUntilMatchingToken(tokenType):
     global tokenizedList
     global tokenIndex
@@ -98,6 +91,7 @@ def continueUntilMatchingToken(tokenType):
             return
     raise ValueError('No matching token found')
 
+# Skip all following tokens until a non-flair token, such as EoL, is found
 def continueUntilNonFlair():
     global tokenizedList
     global tokenIndex
@@ -107,8 +101,9 @@ def continueUntilNonFlair():
             return
     raise ValueError('No matching token found')
 
-
+# Tokenize the Source
 def tokenize():
+    global prg
     global programLine
     global tokenIndex
     # Tokenize it
@@ -123,6 +118,7 @@ def tokenize():
         tokenizedList.append(("ENDOFLINE",""))
         programLine+=1
 
+# Print the tokenized List
 def printTokenizedList():
     for token in tokenizedList:
         if (token==("ENDOFLINE","")):
@@ -130,6 +126,7 @@ def printTokenizedList():
         else:
             print(token,end="")
 
+# Future Calculator function for more complex assignments
 def evalAllFollowing():
     global tokenizedList
     global tokenIndex
@@ -144,6 +141,26 @@ def evalAllFollowing():
         tokenIndex+=1
     raise ValueError('No matching token found')
 
+# Leak safe token acquisition
+def getToken(index):
+    if (index > len(tokenizedList) or index < 0):
+        return ("","")
+    else:
+        return tokenizedList[index]
+
+def writeInstruction(file, instruction):
+    global byteNumber
+    global binarySize
+    file.write(instruction)
+    if (byteNumber):
+        file.write(f"\t\t; {binarySize}")
+    file.write("\n")
+    binarySize += 1
+
+def writeComment(file, string):
+    if (writeCommentToggle):
+        file.write("; " + string + "\n")
+
 # Load in PBL Program
 with open(filename, 'r') as file:
     for line in file:
@@ -155,31 +172,12 @@ if (printTokens):
     printTokenizedList()
     print()
 
+# Variables used by program
 variables = ["tmp"]
 
 asmFilename = Path(filename).stem + ".asm"
 
-def getToken(index):
-    if (index > len(tokenizedList)):
-        return ("","")
-    else:
-        return tokenizedList[index]
-
-prgSize = 0
-def writeInstruction(file, instruction):
-    global byteNumber
-    global prgSize
-    file.write(instruction)
-    if (byteNumber):
-        file.write(f"\t\t; {prgSize}")
-    file.write("\n")
-    prgSize += 1
-
-def writeSource(file, string):
-    if (writeSourceCode):
-        file.write("; " + string + "\n")
-
-
+# Compile to assembly
 with open(asmFilename, 'w') as file:
     file.write("#include \"pb3.asm\"\n")
     tokenIndex = 0
@@ -196,11 +194,11 @@ with open(asmFilename, 'w') as file:
             tknTypeNext,tknContentNext = tokenizedList[tokenIndex+1]
             if (tknTypePrev == "VARIABLE"):
                 if (tknTypeNext == "INTEGER"):
-                    writeSource(file,f"{tknContentPrev} = {tknContentNext}")
+                    writeComment(file,f"{tknContentPrev} = {tknContentNext}")
                     writeInstruction(file,f"ldi {tknContentNext}")
                     writeInstruction(file,f"st {tknContentPrev}")
                 elif (tknTypeNext == "VARIABLE"):
-                    writeSource(file,f"{tknContentPrev}={tknContentNext}")
+                    writeComment(file,f"{tknContentPrev}={tknContentNext}")
                     writeInstruction(file,f"ld {tknContentNext}")
                     writeInstruction(file,f"st {tknContentPrev}")
             else:
@@ -210,14 +208,14 @@ with open(asmFilename, 'w') as file:
             tknTypeNext,tknContentNext = tokenizedList[tokenIndex+1]
             if (tknTypePrev == "VARIABLE"):
                 if (tknTypeNext == "INTEGER"):
-                    writeSource(file,f"{tknContentPrev} += {tknContentNext}")
+                    writeComment(file,f"{tknContentPrev} += {tknContentNext}")
                     writeInstruction(file,f"ldi {tknContentNext}")
                     writeInstruction(file,f"st tmp")
                     writeInstruction(file,f"ld {tknContentPrev}")
                     writeInstruction(file,f"add tmp")
                     writeInstruction(file,f"st {tknContentPrev}")
                 elif (tknTypeNext == "VARIABLE"):
-                    writeSource(file,f"{tknContentPrev} += {tknContentNext}")
+                    writeComment(file,f"{tknContentPrev} += {tknContentNext}")
                     writeInstruction(file,f"ld {tknContentNext}")
                     writeInstruction(file,f"st tmp")
                     writeInstruction(file,f"ld {tknContentPrev}")
@@ -232,23 +230,23 @@ with open(asmFilename, 'w') as file:
             if (getToken(tokenIndex+1)[0] == "IF"):
                 var = getToken(tokenIndex+2)[1]
                 if (getToken(tokenIndex+3)[0] == "COMPNOTEQUAL"):
-                    writeSource(file,f"GOTO IF {var}!={getToken(tokenIndex+4)[1]}")
+                    writeComment(file,f"GOTO IF {var}!={getToken(tokenIndex+4)[1]}")
                     writeInstruction(file,f"ld {var}")
                     writeInstruction(file,f"xnor {var}")
                     writeInstruction(file,f"jpz {tknContent}")
                 elif (getToken(tokenIndex+3)[0] == "COMPEQUAL"):
-                    writeSource(file,f"GOTO IF {var}=={getToken(tokenIndex+4)[1]}")
+                    writeComment(file,f"GOTO IF {var}=={getToken(tokenIndex+4)[1]}")
                     writeInstruction(file,f"ld {var}")
                     writeInstruction(file,f"jpz {tknContent}")
             else:
                 # Unconditional
-                writeSource(file,f"GOTO")
+                writeComment(file,f"GOTO")
                 writeInstruction(file,f"ldi 0")
                 writeInstruction(file,f"jpz {tknContent}")
         elif (tknType == "COMMENT"):
-            writeSource(file,f"COMMENT: {tknContent}")
+            writeComment(file,f"COMMENT: {tknContent}")
         elif (tknType == "HALT"):
-            writeSource(file,"HALT")
+            writeComment(file,"HALT")
             writeInstruction(file,"hlt")
         elif (tknType == "ENDOFLINE" and endOfLineSpacing):
             file.write(f"\n")
@@ -259,7 +257,7 @@ with open(asmFilename, 'w') as file:
         file.write(f"{var}\t= {varIndex}\n")
         varIndex += 1
 print("-- COMPILED -- ")
-print(f"Program Size:\t{prgSize}/256")
+print(f"Program Size:\t{binarySize}/256")
 print(f"Variables used:\t{len(variables)}/32\n")
 
 subprocess.run(["customasm", asmFilename]) 

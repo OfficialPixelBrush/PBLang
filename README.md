@@ -1,4 +1,4 @@
-# PBL
+# PBLang
  PBLang A simple compiled language for the PBPU3
 
 # Syntax

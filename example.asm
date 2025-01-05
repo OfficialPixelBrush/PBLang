@@ -1,4 +1,11 @@
+; example.pbl
+; Compiled with the PBLang Compiler
+; by T. Virtmann (2025)
+
 #include "pb3.asm"
+
+; COMMENT: Counting Program
+
 start:
 
 ; x = 0
@@ -19,8 +26,7 @@ add tmp
 st x
 
 ; GOTO IF !CARRY
-xnor tmp
-jpc loop
+jpnc loop
 
 ; HALT
 hlt

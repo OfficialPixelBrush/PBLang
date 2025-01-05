@@ -14,7 +14,7 @@
     ld {addr: u5}       => addr @ 0b010
     add {addr: u5}      => addr @ 0b011
     xnor {addr: u5}     => addr @ 0b100
-    jpc {addr: s5}      => {
+    jpnc {addr: s5}      => {
         reladdr = addr - $
         reladdr`5 @ 0b101
     }

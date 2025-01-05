@@ -185,7 +185,10 @@ asmFilename = Path(filename).stem + ".asm"
 
 # Compile to assembly
 with open(asmFilename, 'w') as file:
-    file.write("#include \"pb3.asm\"\n")
+    writeComment(file,f"{filename}")
+    writeComment(file,f"Compiled with the PBLang Compiler")
+    writeComment(file,f"by T. Virtmann (2025)")
+    file.write("\n#include \"pb3.asm\"\n\n")
     tokenIndex = 0
     while (tokenIndex < len(tokenizedList)):
         tknType,tknContent = getToken(tokenIndex)
@@ -236,11 +239,11 @@ with open(asmFilename, 'w') as file:
             if (getToken(tokenIndex+1)[0] == "IF"):
                 if (getToken(tokenIndex+2)[0] == "CARRY"):
                     writeComment(file,f"GOTO IF CARRY")
-                    writeInstruction(file,f"jpc {tknContent}")
+                    writeInstruction(file,f"xnor tmp")
+                    writeInstruction(file,f"jpnc {tknContent}")
                 elif (getToken(tokenIndex+2)[0] == "NOCARRY"):
                     writeComment(file,f"GOTO IF !CARRY")
-                    writeInstruction(file,f"xnor tmp")
-                    writeInstruction(file,f"jpc {tknContent}")
+                    writeInstruction(file,f"jpnc {tknContent}")
                 else:
                     var = getToken(tokenIndex+2)[1]
                     operator = getToken(tokenIndex+3)[0]
